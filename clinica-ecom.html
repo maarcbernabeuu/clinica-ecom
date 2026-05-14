@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clínica ECOM Ibi — Reserva de Cita</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=Raleway:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>* { margin: 0; padding: 0; box-sizing: border-box; } body { background: #F4F7FB; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+
+    const C = {
+      bg: "#F4F7FB",
+      card: "#FFFFFF",
+      primary: "#1A5FA8",
+      primaryLight: "#E8F1FB",
+      primaryMid: "#2272C3",
+      primaryDark: "#114080",
+      accent: "#00A896",
+      accentLight: "#E0F5F3",
+      text: "#1A2333",
+      muted: "#6B7A99",
+      border: "#DDE6F5",
+      success: "#1A7A4E",
+      successLight: "#E6F5EE",
+      warning: "#A86010",
+      warningLight: "#FEF3E0",
+      danger: "#B83030",
+      dangerLight: "#FEEFEF",
+    };
+
+    const FONT = "'Nunito', 'Segoe UI', system-ui, sans-serif";
+    const HEAD = "'Raleway', 'Segoe UI', system-ui, sans-serif";
+
+    const SPECIALTIES = [
+      {
+        category: "Especialidades Clínicas",
+        color: C.primary,
+        services: [
+          { id: 1, name: "Fisioterapia", duration: 45, price: 45, desc: "Tratamiento del dolor y recuperación funcional" },
+          { id: 2, name: "Nutrición", duration: 60, price: 50, desc: "Plan nutricional personalizado para tu salud" },
+          { id: 3, name: "Psicología", duration: 50, price: 55, desc: "Apoyo psicológico profesional y confidencial" },
+          { id: 4, name: "Podología", duration: 45, price: 40, desc: "Cuidado integral del pie y del tobillo" },
+          { id: 5, name: "Entrenamiento Personal", duration: 60, price: 45, desc: "Ejercicio guiado adaptado a tus objetivos" },
+          { id: 6, name: "Suelo Pélvico", duration: 45, price: 50, desc: "Rehabilitación especializada del suelo pélvico" },
+        ],
+      },
+      {
+        category: "Especialidades Médicas",
+        color: C.primaryDark,
+        services: [
+          { id: 7, name: "Traumatología", duration: 30, price: 60, desc: "Diagnóstico y tratamiento de lesiones del aparato locomotor" },
+          { id: 8, name: "Cirugía General y Proctología", duration: 30, price: 65, desc: "Consulta especializada en cirugía y proctología" },
+        ],
+      },
+      {
+        category: "Medicina Estética",
+        color: C.accent,
+        services: [
+          { id: 9, name: "Medicina Estética", duration: 60, price: 70, desc: "Tratamientos estéticos con resultados naturales" },
+        ],
+      },
+    ];
+
+    const ALL_SERVICES = SPECIALTIES.flatMap((s) => s.services);
+
+    const SLOTS = {
+      morning: ["09:00", "09:45", "10:30", "11:15", "12:00", "12:45"],
+      afternoon: ["16:00", "16:45", "17:30", "18:15", "19:00", "19:45", "20:30"],
+    };
+
+    const TODAY = new Date().toISOString().split("T")[0];
+
+    const SAMPLE = [
+      { id: 1, name: "Marta Sánchez López", phone: "612 345 678", email: "marta@email.com", service: "Fisioterapia", date: "2026-05-13", time: "09:00", status: "confirmada", notes: "Dolor de espalda crónico" },
+      { id: 2, name: "Pedro Gómez Ruiz", phone: "698 765 432", email: "pedro@email.com", service: "Traumatología", date: "2026-05-13", time: "10:30", status: "pendiente", notes: "" },
+      { id: 3, name: "Isabel Martínez", phone: "654 321 987", email: "isabel@email.com", service: "Nutrición", date: "2026-05-14", time: "09:45", status: "pendiente", notes: "Quiere perder peso" },
+      { id: 4, name: "Antonio Pérez Vidal", phone: "677 889 900", email: "", service: "Psicología", date: "2026-05-14", time: "16:45", status: "confirmada", notes: "" },
+      { id: 5, name: "Rosa Hernández", phone: "623 456 789", email: "rosa@email.com", service: "Suelo Pélvico", date: "2026-05-15", time: "10:30", status: "pendiente", notes: "Post-parto reciente" },
+      { id: 6, name: "Javier Soler Alba", phone: "611 223 344", email: "", service: "Podología", date: "2026-05-15", time: "17:30", status: "confirmada", notes: "Dolor en el talón" },
+    ];
+
+    const getMaxDate = () => { const d = new Date(); d.setMonth(d.getMonth() + 3); return d.toISOString().split("T")[0]; };
+    const fmtDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const statusStyle = (s) => ({
+      color: s === "confirmada" ? C.success : s === "cancelada" ? C.danger : C.warning,
+      background: s === "confirmada" ? C.successLight : s === "cancelada" ? C.dangerLight : C.warningLight,
+    });
+
+    const getCategoryColor = (serviceName) => {
+      for (const sp of SPECIALTIES) {
+        if (sp.services.find((s) => s.name === serviceName)) return sp.color;
+      }
+      return C.primary;
+    };
+
+    function App() {
+      const [view, setView] = useState("home");
+      const [step, setStep] = useState(1);
+      const [service, setService] = useState(null);
+      const [date, setDate] = useState("");
+      const [time, setTime] = useState("");
+      const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "" });
+      const [appts, setAppts] = useState(SAMPLE);
+      const [adminAuth, setAdminAuth] = useState(false);
+      const [adminPass, setAdminPass] = useState("");
+      const [adminErr, setAdminErr] = useState("");
+      const [filter, setFilter] = useState("hoy");
+
+      const slotTaken = (d, t) => appts.some((a) => a.date === d && a.time === t && a.status !== "cancelada");
+      const submitBooking = () => { setAppts((p) => [...p, { id: Date.now(), ...form, service: service.name, date, time, status: "pendiente" }]); setStep(5); };
+      const updateStatus = (id, status) => setAppts((p) => p.map((a) => (a.id === id ? { ...a, status } : a)));
+      const tryLogin = () => { if (adminPass === "ecom2024") { setAdminAuth(true); setAdminErr(""); } else setAdminErr("Contraseña incorrecta."); };
+      const goHome = () => { setView("home"); setStep(1); setService(null); setDate(""); setTime(""); setForm({ name: "", phone: "", email: "", notes: "" }); };
+
+      const getFiltered = () => {
+        if (filter === "hoy") return appts.filter((a) => a.date === TODAY).sort((a, b) => a.time.localeCompare(b.time));
+        if (filter === "manana") { const t = new Date(); t.setDate(t.getDate() + 1); return appts.filter((a) => a.date === t.toISOString().split("T")[0]).sort((a, b) => a.time.localeCompare(b.time)); }
+        return [...appts].sort((a, b) => a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date));
+      };
+
+      const todayAppts = appts.filter((a) => a.date === TODAY);
+      const pendingTotal = appts.filter((a) => a.status === "pendiente").length;
+
+      const inp = { width: "100%", padding: "10px 14px", border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, background: C.card, color: C.text, boxSizing: "border-box", outline: "none", fontFamily: FONT };
+      const primaryBtn = { padding: "11px 26px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "#fff" };
+      const outlineBtn = { padding: "11px 26px", borderRadius: 8, border: `2px solid ${C.primary}`, cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: FONT, background: "transparent", color: C.primary };
+      const ghostBtn = { background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 13, padding: 0, fontFamily: FONT };
+
+      // HOME
+      if (view === "home") return (
+        <div style={{ background: C.bg, minHeight: "100vh", fontFamily: FONT }}>
+          {/* Top bar */}
+          <div style={{ background: C.primaryDark, padding: "7px 24px", display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 20, fontSize: 12, color: "rgba(255,255,255,0.75)" }}>
+            <span>📍 Ibi, Alicante</span>
+            <span>📞 966 55 25 15</span>
+            <span>✉️ info@clinicaecom.com</span>
+            <span>🕐 Lun–Vie: 09:00–14:00 / 16:00–21:00</span>
+          </div>
+
+          {/* Header */}
+          <div style={{ background: C.card, borderBottom: `2px solid ${C.border}`, padding: "0 32px" }}>
+            <div style={{ maxWidth: 1080, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 68, flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ width: 44, height: 44, background: `linear-gradient(135deg, ${C.primary}, ${C.primaryMid})`, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontFamily: HEAD, fontSize: 22, fontWeight: 800, color: C.primary, letterSpacing: "-0.02em" }}>Clínica ECOM</div>
+                  <div style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.06em" }}>IBI · MÁS DE 20 AÑOS CUIDÁNDOTE</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setView("admin")} style={{ ...outlineBtn, padding: "8px 18px", fontSize: 13 }}>Panel Admin</button>
+                <button onClick={() => setView("booking")} style={{ ...primaryBtn, padding: "8px 18px", fontSize: 13 }}>Reservar cita</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Hero */}
+          <div style={{ background: `linear-gradient(135deg, ${C.primaryDark} 0%, ${C.primary} 60%, ${C.primaryMid} 100%)`, padding: "60px 32px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: -60, right: -60, width: 300, height: 300, background: "rgba(255,255,255,0.04)", borderRadius: "50%" }} />
+            <div style={{ position: "absolute", bottom: -80, left: -40, width: 250, height: 250, background: "rgba(255,255,255,0.03)", borderRadius: "50%" }} />
+            <div style={{ position: "relative" }}>
+              <div style={{ display: "inline-block", background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "5px 16px", fontSize: 12, color: "rgba(255,255,255,0.85)", marginBottom: 16, fontWeight: 600, letterSpacing: "0.06em" }}>
+                +20 AÑOS · +20 PROFESIONALES · +15.000 PACIENTES
+              </div>
+              <h1 style={{ fontFamily: HEAD, fontSize: 44, fontWeight: 800, color: "#fff", margin: "0 0 14px", lineHeight: 1.15, letterSpacing: "-0.02em" }}>
+                Tu salud,<br/>nuestra prioridad
+              </h1>
+              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.78)", margin: "0 auto 32px", maxWidth: 500, lineHeight: 1.7 }}>
+                Clínica multidisciplinar en Ibi. Fisioterapia, medicina, nutrición, psicología y mucho más. Reserva tu cita online en segundos.
+              </p>
+              <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                <button onClick={() => setView("booking")} style={{ background: C.accent, color: "#fff", border: "none", padding: "14px 36px", borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: FONT }}>
+                  Reservar cita ahora
+                </button>
+                <a href="tel:+34966552515" style={{ background: "rgba(255,255,255,0.12)", color: "#fff", border: "1px solid rgba(255,255,255,0.25)", padding: "14px 28px", borderRadius: 8, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: FONT, textDecoration: "none" }}>
+                  📞 Llamar
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div style={{ background: C.card, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", padding: "0 32px" }}>
+              {[["20+", "Años de experiencia"], ["20", "Profesionales especializados"], ["15.000+", "Pacientes atendidos"], ["9", "Especialidades disponibles"]].map(([v, l]) => (
+                <div key={l} style={{ textAlign: "center", padding: "20px 16px", borderRight: `1px solid ${C.border}` }}>
+                  <div style={{ fontFamily: HEAD, fontSize: 28, fontWeight: 800, color: C.primary }}>{v}</div>
+                  <div style={{ fontSize: 12, color: C.muted, fontWeight: 500, marginTop: 2 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Services */}
+          <div style={{ maxWidth: 1080, margin: "0 auto", padding: "48px 32px" }}>
+            <div style={{ textAlign: "center", marginBottom: 36 }}>
+              <div style={{ fontFamily: HEAD, fontSize: 32, fontWeight: 800, color: C.text, marginBottom: 8, letterSpacing: "-0.02em" }}>Nuestras especialidades</div>
+              <div style={{ fontSize: 14, color: C.muted }}>Haz clic en el servicio que necesitas para reservar directamente</div>
+            </div>
+
+            {SPECIALTIES.map((sp) => (
+              <div key={sp.category} style={{ marginBottom: 32 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 4, height: 20, background: sp.color, borderRadius: 2 }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: sp.color, textTransform: "uppercase", letterSpacing: "0.06em" }}>{sp.category}</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+                  {sp.services.map((s) => (
+                    <div key={s.id} onClick={() => { setService(s); setStep(2); setView("booking"); }}
+                      style={{ background: C.card, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: "18px 20px", cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = sp.color; e.currentTarget.style.boxShadow = `0 4px 14px rgba(26,95,168,0.10)`; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: C.text, marginBottom: 5 }}>{s.name}</div>
+                      <div style={{ fontSize: 13, color: C.muted, marginBottom: 14, lineHeight: 1.5 }}>{s.desc}</div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 12, background: C.primaryLight, color: sp.color, padding: "4px 10px", borderRadius: 20, fontWeight: 600 }}>{s.duration} min</span>
+                        <span style={{ fontSize: 16, fontWeight: 700, color: sp.color }}>{s.price}€</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div style={{ background: C.primaryDark, padding: "32px" }}>
+            <div style={{ maxWidth: 1080, margin: "0 auto", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 20, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+              <div>
+                <div style={{ fontFamily: HEAD, fontSize: 18, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Clínica ECOM</div>
+                <div>Ibi, Alicante · +20 años cuidándote</div>
+              </div>
+              <div><div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 600, marginBottom: 4 }}>Contacto</div><div>966 55 25 15 · info@clinicaecom.com</div></div>
+              <div><div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 600, marginBottom: 4 }}>Horario</div><div>Lun–Vie: 09:00–14:00 / 16:00–21:00</div></div>
+            </div>
+          </div>
+        </div>
+      );
+
+      // BOOKING
+      if (view === "booking") return (
+        <div style={{ background: C.bg, minHeight: "100vh", fontFamily: FONT }}>
+          <div style={{ background: C.card, borderBottom: `2px solid ${C.border}`, padding: "0 24px" }}>
+            <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 58 }}>
+              <button onClick={() => { if (step === 1 || step === 5) goHome(); else setStep((s) => s - 1); }} style={ghostBtn}>← {step === 1 || step === 5 ? "Inicio" : "Atrás"}</button>
+              <div style={{ fontFamily: HEAD, fontSize: 17, fontWeight: 800, color: C.primary }}>{step < 5 ? "Nueva cita" : "¡Reserva confirmada!"}</div>
+              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>{step < 5 ? `Paso ${step} de 4` : ""}</div>
+            </div>
+          </div>
+          {step < 5 && <div style={{ height: 4, background: C.border }}><div style={{ height: "100%", background: `linear-gradient(90deg, ${C.primary}, ${C.accent})`, width: `${(step / 4) * 100}%`, transition: "width 0.3s" }} /></div>}
+
+          <div style={{ maxWidth: 720, margin: "0 auto", padding: "36px 24px" }}>
+            {/* STEP 1 */}
+            {step === 1 && (
+              <>
+                <h2 style={{ fontFamily: HEAD, fontSize: 26, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>¿Qué servicio necesitas?</h2>
+                <p style={{ fontSize: 14, color: C.muted, margin: "0 0 28px" }}>Selecciona la especialidad que quieres reservar</p>
+                {SPECIALTIES.map((sp) => (
+                  <div key={sp.category} style={{ marginBottom: 24 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: sp.color, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 3, height: 14, background: sp.color, borderRadius: 2 }} />{sp.category}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+                      {sp.services.map((s) => (
+                        <div key={s.id} onClick={() => { setService(s); setStep(2); }}
+                          style={{ background: service?.id === s.id ? C.primaryLight : C.card, border: `1.5px solid ${service?.id === s.id ? C.primary : C.border}`, borderRadius: 10, padding: "14px 16px", cursor: "pointer" }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 3 }}>{s.name}</div>
+                          <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, lineHeight: 1.4 }}>{s.desc}</div>
+                          <div style={{ fontSize: 12, color: C.muted }}>{s.duration} min · <span style={{ fontWeight: 700, color: sp.color }}>{s.price}€</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* STEP 2 */}
+            {step === 2 && (
+              <>
+                <h2 style={{ fontFamily: HEAD, fontSize: 26, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>Elige fecha y hora</h2>
+                <p style={{ fontSize: 14, color: C.muted, margin: "0 0 20px" }}>Disponibilidad de lunes a viernes</p>
+                <div style={{ background: C.primaryLight, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 22, display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ fontWeight: 700, color: C.primary }}>{service?.name}</span>
+                  <span style={{ color: C.muted }}>{service?.duration} min · {service?.price}€</span>
+                </div>
+                <div style={{ marginBottom: 22 }}>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: C.text, display: "block", marginBottom: 8 }}>Fecha</label>
+                  <input type="date" value={date} min={TODAY} max={getMaxDate()} onChange={(e) => { setDate(e.target.value); setTime(""); }} style={{ ...inp, width: "auto" }} />
+                </div>
+                {date && (
+                  <>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 14 }}>{cap(fmtDate(date))}</div>
+                    {[["Mañana", SLOTS.morning], ["Tarde", SLOTS.afternoon]].map(([label, slots]) => (
+                      <div key={label} style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {slots.map((t) => {
+                            const taken = slotTaken(date, t); const sel = time === t;
+                            return <button key={t} disabled={taken} onClick={() => setTime(t)}
+                              style={{ padding: "9px 18px", borderRadius: 7, fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: taken ? "default" : "pointer", border: `1.5px solid ${sel ? C.primary : taken ? "#E5E5E5" : C.border}`, background: sel ? C.primary : taken ? "#F5F5F5" : C.card, color: sel ? "#fff" : taken ? "#C0C0C0" : C.text }}>
+                              {t}{taken ? " ·" : ""}
+                            </button>;
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {time && <div style={{ textAlign: "right", marginTop: 8 }}><button onClick={() => setStep(3)} style={primaryBtn}>Continuar →</button></div>}
+                  </>
+                )}
+              </>
+            )}
+
+            {/* STEP 3 */}
+            {step === 3 && (
+              <>
+                <h2 style={{ fontFamily: HEAD, fontSize: 26, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>Tus datos de contacto</h2>
+                <p style={{ fontSize: 14, color: C.muted, margin: "0 0 22px" }}>El equipo de ECOM confirmará tu cita lo antes posible</p>
+                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "14px 16px", marginBottom: 24, fontSize: 13 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}><span style={{ fontWeight: 700, color: C.text }}>{service?.name}</span><span style={{ fontWeight: 700, color: C.primary }}>{service?.price}€</span></div>
+                  <div style={{ color: C.muted }}>{cap(fmtDate(date))} · {time}h</div>
+                </div>
+                <div style={{ display: "grid", gap: 16 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: C.text, display: "block", marginBottom: 7 }}>Nombre completo *</label>
+                    <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: María García López" style={inp} />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 700, color: C.text, display: "block", marginBottom: 7 }}>Teléfono *</label>
+                      <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="612 345 678" style={inp} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 700, color: C.text, display: "block", marginBottom: 7 }}>Email (opcional)</label>
+                      <input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@email.com" style={inp} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: C.text, display: "block", marginBottom: 7 }}>Motivo de la consulta (opcional)</label>
+                    <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Cuéntanos brevemente qué te ocurre..." rows={3} style={{ ...inp, resize: "vertical" }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 24, textAlign: "right" }}>
+                  <button onClick={submitBooking} disabled={!form.name || !form.phone} style={{ ...primaryBtn, opacity: !form.name || !form.phone ? 0.45 : 1, cursor: !form.name || !form.phone ? "default" : "pointer" }}>
+                    Confirmar reserva ✓
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 5 */}
+            {step === 5 && (
+              <div style={{ textAlign: "center", padding: "16px 0 32px" }}>
+                <div style={{ width: 72, height: 72, background: `linear-gradient(135deg, ${C.primary}, ${C.accent})`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px" }}>
+                  <svg width="34" height="34" fill="none" stroke="#fff" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                </div>
+                <h2 style={{ fontFamily: HEAD, fontSize: 30, fontWeight: 800, color: C.text, margin: "0 0 10px" }}>¡Reserva recibida!</h2>
+                <p style={{ fontSize: 14, color: C.muted, margin: "0 auto 28px", maxWidth: 420, lineHeight: 1.7 }}>
+                  El equipo de Clínica ECOM revisará tu solicitud y te contactará en breve. Cualquier duda, llama al <strong style={{ color: C.text }}>966 55 25 15</strong>.
+                </p>
+                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "22px", maxWidth: 380, margin: "0 auto 28px", textAlign: "left" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.06em" }}>Resumen de tu cita</div>
+                  {[["Servicio", service?.name], ["Fecha", cap(fmtDate(date))], ["Hora", `${time}h`], ["Paciente", form.name], ["Contacto", form.phone]].map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+                      <span style={{ color: C.muted }}>{k}</span><span style={{ fontWeight: 700, color: C.text }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={goHome} style={outlineBtn}>Volver al inicio</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+      // ADMIN
+      if (view === "admin") return (
+        <div style={{ background: C.bg, minHeight: "100vh", fontFamily: FONT }}>
+          <div style={{ background: `linear-gradient(90deg, ${C.primaryDark}, ${C.primary})`, padding: "0 24px" }}>
+            <div style={{ maxWidth: 1080, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <button onClick={() => setView("home")} style={{ ...ghostBtn, color: "rgba(255,255,255,0.65)" }}>← Inicio</button>
+                <span style={{ color: "rgba(255,255,255,0.2)" }}>|</span>
+                <div style={{ fontFamily: HEAD, fontSize: 17, fontWeight: 800, color: "#fff" }}>Panel de administración · ECOM</div>
+              </div>
+              {adminAuth && <button onClick={() => { setAdminAuth(false); setAdminPass(""); }} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, padding: "6px 14px", fontSize: 12, color: "#fff", cursor: "pointer", fontFamily: FONT, fontWeight: 600 }}>Cerrar sesión</button>}
+            </div>
+          </div>
+
+          <div style={{ maxWidth: 1080, margin: "0 auto", padding: "36px 24px" }}>
+            {!adminAuth && (
+              <div style={{ maxWidth: 380, margin: "0 auto" }}>
+                <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "36px 32px" }}>
+                  <div style={{ textAlign: "center", marginBottom: 24 }}>
+                    <div style={{ width: 52, height: 52, background: C.primaryLight, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                      <svg width="24" height="24" fill="none" stroke={C.primary} strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <h2 style={{ fontFamily: HEAD, fontSize: 22, fontWeight: 800, color: C.text, margin: "0 0 4px" }}>Acceso restringido</h2>
+                    <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>Solo para el equipo de Clínica ECOM</p>
+                  </div>
+                  <label style={{ fontSize: 13, fontWeight: 700, color: C.text, display: "block", marginBottom: 7 }}>Contraseña</label>
+                  <input type="password" value={adminPass} onChange={(e) => setAdminPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && tryLogin()} placeholder="Contraseña de acceso" style={{ ...inp, marginBottom: 12 }} />
+                  {adminErr && <div style={{ fontSize: 12, color: C.danger, marginBottom: 10 }}>{adminErr}</div>}
+                  <button onClick={tryLogin} style={{ ...primaryBtn, width: "100%", textAlign: "center" }}>Entrar</button>
+                  <div style={{ fontSize: 11, color: C.muted, textAlign: "center", marginTop: 12 }}>Demo: ecom2024</div>
+                </div>
+              </div>
+            )}
+
+            {adminAuth && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 28 }}>
+                  {[
+                    { label: "Citas hoy", value: todayAppts.length, color: C.primary, bg: C.primaryLight },
+                    { label: "Confirmadas hoy", value: todayAppts.filter((a) => a.status === "confirmada").length, color: C.success, bg: C.successLight },
+                    { label: "Pendientes total", value: pendingTotal, color: C.warning, bg: C.warningLight },
+                    { label: "Total en agenda", value: appts.length, color: C.muted, bg: C.bg },
+                  ].map((k, i) => (
+                    <div key={i} style={{ background: k.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: "16px 18px", textAlign: "center" }}>
+                      <div style={{ fontFamily: HEAD, fontSize: 30, fontWeight: 800, color: k.color, lineHeight: 1 }}>{k.value}</div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 4, fontWeight: 500 }}>{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                  {[["hoy", "Hoy"], ["manana", "Mañana"], ["todas", "Todas las citas"]].map(([k, label]) => (
+                    <button key={k} onClick={() => setFilter(k)}
+                      style={{ padding: "8px 18px", borderRadius: 7, border: `1.5px solid ${filter === k ? C.primary : C.border}`, background: filter === k ? C.primary : C.card, color: filter === k ? "#fff" : C.text, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: FONT }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: "grid", gap: 10 }}>
+                  {getFiltered().length === 0 && <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "40px", textAlign: "center", color: C.muted, fontSize: 14 }}>No hay citas para este período</div>}
+                  {getFiltered().map((a) => (
+                    <div key={a.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: "16px 18px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: C.text }}>{a.name}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20, ...statusStyle(a.status) }}>{cap(a.status)}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 10px", borderRadius: 20, background: C.primaryLight, color: getCategoryColor(a.service) }}>{a.service}</span>
+                          </div>
+                          <div style={{ fontSize: 13, color: C.muted, marginBottom: 3 }}>{cap(fmtDate(a.date))} · {a.time}h</div>
+                          <div style={{ fontSize: 13, color: C.muted }}>{a.phone}{a.email ? ` · ${a.email}` : ""}</div>
+                          {a.notes && <div style={{ fontSize: 12, color: C.muted, marginTop: 6, fontStyle: "italic", background: C.bg, padding: "5px 10px", borderRadius: 6 }}>{a.notes}</div>}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          {a.status === "pendiente" && <>
+                            <button onClick={() => updateStatus(a.id, "confirmada")} style={{ padding: "7px 14px", borderRadius: 6, border: `1px solid ${C.success}`, background: C.successLight, color: C.success, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: FONT }}>Confirmar</button>
+                            <button onClick={() => updateStatus(a.id, "cancelada")} style={{ padding: "7px 14px", borderRadius: 6, border: `1px solid ${C.danger}`, background: C.dangerLight, color: C.danger, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: FONT }}>Cancelar</button>
+                          </>}
+                          {a.status === "confirmada" && <button onClick={() => updateStatus(a.id, "cancelada")} style={{ padding: "7px 14px", borderRadius: 6, border: `1px solid ${C.danger}`, background: C.dangerLight, color: C.danger, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: FONT }}>Cancelar</button>}
+                          {a.status === "cancelada" && <button onClick={() => updateStatus(a.id, "pendiente")} style={{ padding: "7px 14px", borderRadius: 6, border: `1px solid ${C.border}`, background: C.bg, color: C.muted, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: FONT }}>Reactivar</button>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+
+      return null;
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
